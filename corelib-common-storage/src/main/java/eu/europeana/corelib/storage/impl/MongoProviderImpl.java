@@ -48,10 +48,12 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
      */
     public MongoProviderImpl(String connectionUrl) {
         // Let's add a connectionPoolListener so we can keep track of the number of connections
-        MongoClientOptions.Builder clientOptions = new MongoClientOptions.Builder().addConnectionPoolListener(this);
-        clientOptions.connectTimeout(5000);
-        clientOptions.socketTimeout(6000);
-        MongoClientURI uri = new MongoClientURI(connectionUrl, clientOptions);
+        MongoClientOptions.Builder clientOptionsBuilder = new MongoClientOptions.Builder().addConnectionPoolListener(this);
+        clientOptionsBuilder.connectTimeout(5000);
+        clientOptionsBuilder.socketTimeout(6000);
+        clientOptionsBuilder.maxConnectionIdleTime(30000);
+        clientOptionsBuilder.maxConnectionLifeTime(60000);
+        MongoClientURI uri = new MongoClientURI(connectionUrl, clientOptionsBuilder);
 //        MongoClientURI uri = new MongoClientURI(connectionUrl);
         definedDatabase = uri.getDatabase();
         LOG.info("[MongoProvider] [constructor] creating new MongoClient for {}; {}",
