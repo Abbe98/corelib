@@ -108,7 +108,7 @@ public class EdmMongoServerImpl implements EdmMongoServer {
         options.connectionsPerHost(10);
         options.connectTimeout(5000);
         options.socketTimeout(6000);
-        this.mongoClient  = new MongoProviderImpl(hosts, ports, databaseName, username, password, options).getMongo();
+        this.mongoClient  = new MongoProviderImpl(hosts, ports, databaseName, username, password, options).getMongoClient();
         this.databaseName = databaseName;
         createDatastore(createIndexes);
     }

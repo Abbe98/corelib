@@ -10,32 +10,31 @@ import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Helper class to create a MongoClient
  */
 public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener {
-    private static final Logger LOG = LogManager.getLogger(MongoProviderImpl.class);
-    private static final int    THREADS_THRESHOLD     = 10;
-    private static final int    MAX_THREADS_THRESHOLD = 20;
+    private static final Logger LOG                   = LogManager.getLogger(MongoProviderImpl.class);
 
-    private MongoClient mongo;
+    // most of these taken from https://stackoverflow.com/questions/6520439/how-to-configure-mongodb-java-driver-mongooptions-for-production-use
+    // a fairly old post, but it's very hard to find anything else.
+    // Exception is the value for threadsAllowedToBlockForConnectionMultiplier - searching for that yields in
+    // anything between 5 and 10000. So I'm using the value most often seen.
+    // For all these goes: let's test and see what happens.
+    private static final int MAX_CONNECTION_IDLE_MILLIS = 30000;
+    private static final int MAX_CONNECTION_LIFE_MILLIS = 60000;
+    private static final int CONNECTIONS_PER_HOST = 40;
+    private static final int THREADS_MAY_BLOCK_MULTIPLIER = 100;
+    private static final int SOCKET_TIMEOUT_MILLIS = 60000;
+    private static final int CONNECT_TIMEOUT_MILLIS = 30000;
+
+    private MongoClient mongoClient;
     private String      definedDatabase;
-
-    // from OAI-PMH2, values taken from the oai-pmh2 properties for now
-    // number of threads from configuration
-    private int threadsCount = 10;
-
-    // TODO figure out difference between threadsCount and maxThreadCount.
-    // Looks like both are static numbers from the configuration and never changed (at least not after initialization in initThreadPool method)
-    private int maxThreadsCount = 20;
 
     // I do not see the 2 connections directly after start-up that Patrick reported, so let's start at 0
     private int nrConnections = 0;
 
-    private ExecutorService threadPool;
 
     /**
      * Create a new MongoClient based on a connectionUrl, e.g.
@@ -49,49 +48,29 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
     public MongoProviderImpl(String connectionUrl) {
         // Let's add a connectionPoolListener so we can keep track of the number of connections
         MongoClientOptions.Builder clientOptionsBuilder = new MongoClientOptions.Builder().addConnectionPoolListener(this);
-        clientOptionsBuilder.connectTimeout(5000);
-        clientOptionsBuilder.socketTimeout(6000);
-        clientOptionsBuilder.maxConnectionIdleTime(30000);
-        clientOptionsBuilder.maxConnectionLifeTime(60000);
+
+        // note that in the new driver architecture (v. 3.7 and later) something different is used. I tried that here
+        // but it has so many tangles that I think we best reserve that for Api / Corelib v.3
+        clientOptionsBuilder.maxConnectionIdleTime(MAX_CONNECTION_IDLE_MILLIS);
+        clientOptionsBuilder.maxConnectionLifeTime(MAX_CONNECTION_LIFE_MILLIS);
+        clientOptionsBuilder.connectionsPerHost(CONNECTIONS_PER_HOST);
+        clientOptionsBuilder.socketTimeout(SOCKET_TIMEOUT_MILLIS);
+        clientOptionsBuilder.connectTimeout(CONNECT_TIMEOUT_MILLIS);
+        clientOptionsBuilder.threadsAllowedToBlockForConnectionMultiplier(THREADS_MAY_BLOCK_MULTIPLIER);
+
         MongoClientURI uri = new MongoClientURI(connectionUrl, clientOptionsBuilder);
-//        MongoClientURI uri = new MongoClientURI(connectionUrl);
+
         definedDatabase = uri.getDatabase();
         LOG.info("[MongoProvider] [constructor] creating new MongoClient for {}; {}",
                  uri.getHosts(),
                  (StringUtils.isEmpty(definedDatabase) ? "default database" : "database: " + definedDatabase + " "));
-        mongo = new MongoClient(uri);
-        initThreadPool();
+        mongoClient = new MongoClient(uri);
         LOG.info("[MongoProvider] [constructor] connections count: {}", this.nrConnections);
     }
 
     /**
-     * Threads count must be at least 1. When it's bigger than <code>THREADS_THRESHOLD</code> but smaller than <code>maxThreadsCount</code>
-     * a warning is displayed. When it exceeds <code>maxThreadsCount</code> a warning is displayed and the value is set to <code>MAX_THREADS_THRESHOLD</code>
-     */
-    private void initThreadPool() {
-        // init thread pool
-        if (maxThreadsCount < THREADS_THRESHOLD) {
-            maxThreadsCount = MAX_THREADS_THRESHOLD;
-        }
-
-        if (threadsCount < 1) {
-            threadsCount = 1;
-        } else if (threadsCount > THREADS_THRESHOLD && threadsCount <= maxThreadsCount) {
-            LOG.warn("[MongoProvider] [initThreadPool()] thread count exceeds {}, which may narrow " +
-                     "the number of clients working in parallel", THREADS_THRESHOLD);
-        } else if (threadsCount > maxThreadsCount) {
-            LOG.warn("[MongoProvider] [initThreadPool()] thread count exceeds {}, which may highly narrow " +
-                     "the number of clients working in parallel. Changing to {}",
-                     maxThreadsCount, MAX_THREADS_THRESHOLD);
-            threadsCount = MAX_THREADS_THRESHOLD;
-        }
-        LOG.info("[MongoProvider] [initThreadPool()] creating new thread pool with {} threads.", threadsCount);
-        threadPool = Executors.newFixedThreadPool(threadsCount);
-    }
-
-    /**
      * Create a new MongoClient without any credentials
-     * @deprecated This constuctor is not used anywhere
+     * @deprecated This constructor is not used anywhere
      *
      * @param hosts comma-separated host names
      * @param ports omma-separated port numbers
@@ -164,7 +143,7 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
                      Arrays.toString(hosts),
                      " (no credentials)");
             definedDatabase = null;
-            mongo           = new MongoClient(serverAddresses, builder.build());
+            mongoClient     = new MongoClient(serverAddresses, builder.build());
         } else {
             List<MongoCredential> credentials = new ArrayList<>();
             credentials.add(MongoCredential.createCredential(username, dbName, password.toCharArray()));
@@ -174,7 +153,7 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
                      dbName,
                      " (with credentials)");
             definedDatabase = dbName;
-            mongo           = new MongoClient(serverAddresses, credentials, builder.build());
+            mongoClient     = new MongoClient(serverAddresses, credentials, builder.build());
         }
     }
 
@@ -218,12 +197,12 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
     }
 
     /**
-     * @see MongoProvider#getMongo()
+     * @see MongoProvider#getMongoClient()
      */
     @Override
-    public MongoClient getMongo() {
+    public MongoClient getMongoClient() {
         LOG.info("[MongoProvider] [getMongo()] connections count: {}", this.nrConnections);
-        return mongo;
+        return mongoClient;
     }
 
     /**
@@ -239,13 +218,9 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
     @Override
     public void close() {
         LOG.info("[MongoProvider] [close()] connections count: {}", this.nrConnections);
-        if (mongo != null) {
-            LOG.info("[MongoProvider] [close()] ... closing MongoClient ... {}", mongo.getServerAddressList().get(0));
-            mongo.close();
-        }
-        if (threadPool != null) {
-            LOG.info("[MongoProvider] [close()] ... shutting down threadPool ...");
-            threadPool.shutdown();
+        if (mongoClient != null) {
+            LOG.info("[MongoProvider] [close()] ... closing MongoClient ... {}", mongoClient.getServerAddressList().get(0));
+            mongoClient.close();
         }
     }
 
@@ -261,22 +236,22 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
 
     @Override
     public void connectionCheckedOut(ConnectionCheckedOutEvent connectionCheckedOutEvent) {
-        // ignore
+        LOG.info("[MongoProvider] [connectionCheckedOut()]: {}", connectionCheckedOutEvent);
     }
 
     @Override
     public void connectionCheckedIn(ConnectionCheckedInEvent connectionCheckedInEvent) {
-        // ignore
+        LOG.info("[MongoProvider] [connectionCheckedIn()]: {}", connectionCheckedInEvent);
     }
 
     @Override
     public void waitQueueEntered(ConnectionPoolWaitQueueEnteredEvent connectionPoolWaitQueueEnteredEvent) {
-        // ignore
+        LOG.info("[MongoProvider] [waitQueueEntered()]: {}", connectionPoolWaitQueueEnteredEvent);
     }
 
     @Override
     public void waitQueueExited(ConnectionPoolWaitQueueExitedEvent connectionPoolWaitQueueExitedEvent) {
-        // ignore
+        LOG.info("[MongoProvider] [waitQueueExited()]: {}", connectionPoolWaitQueueExitedEvent);
     }
 
     @Override

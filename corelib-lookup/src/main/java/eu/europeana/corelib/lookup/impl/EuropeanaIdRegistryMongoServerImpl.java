@@ -102,7 +102,7 @@ public class EuropeanaIdRegistryMongoServerImpl implements MongoServer, European
                                                        String.valueOf(port),
                                                        databaseName,
                                                        username,
-                                                       password).getMongo();
+                                                       password).getMongoClient();
         this.databaseName      = databaseName;
         europeanaIdMongoServer = new EuropeanaIdMongoServerImpl(mongoClient, databaseName);
         createDatastore(createIndexes);

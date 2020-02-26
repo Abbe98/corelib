@@ -8,7 +8,6 @@ import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version;
 import de.flapdoodle.embed.process.runtime.Network;
-import eu.europeana.corelib.edm.exceptions.MongoDBException;
 import eu.europeana.corelib.mongo.server.EdmMongoServer;
 import eu.europeana.corelib.mongo.server.impl.EdmMongoServerImpl;
 import eu.europeana.corelib.storage.MongoProvider;
@@ -45,10 +44,10 @@ public class EmbeddedMongoProvider implements MongoProvider {
     }
 
     /**
-     * @see MongoProvider#getMongo()
+     * @see MongoProvider#getMongoClient()
      */
     @Override
-    public MongoClient getMongo() {
+    public MongoClient getMongoClient() {
         return mongo;
     }
 

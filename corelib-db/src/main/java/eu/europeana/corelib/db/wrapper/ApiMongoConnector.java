@@ -9,8 +9,6 @@ import org.apache.logging.log4j.Logger;
 import org.mongodb.morphia.Datastore;
 import org.mongodb.morphia.Morphia;
 
-import javax.management.DescriptorKey;
-
 /**
  * Let the search-api (and other api's?) connect to a mongo database with Morphia
  * This class uses a basic Morphia connection without any mappings or other specific settings
@@ -34,7 +32,7 @@ public class ApiMongoConnector {
     public Datastore createDatastore(String connectionUrl) {
         MongoProvider mongo = new MongoProviderImpl(connectionUrl);
         this.label       = mongo.getDefaultDatabase();
-        this.mongoClient = mongo.getMongo();
+        this.mongoClient = mongo.getMongoClient();
         LOG.info("[corelib.db ApiMongoConnector] Creating Morphia datastore for databases {}", label);
         return new Morphia().createDatastore(mongoClient, label);
     }
@@ -61,7 +59,7 @@ public class ApiMongoConnector {
         Morphia   connection = new Morphia();
         try {
             this.label       = label;
-            this.mongoClient = new MongoProviderImpl(host, String.valueOf(port), dbName, username, password).getMongo();
+            this.mongoClient = new MongoProviderImpl(host, String.valueOf(port), dbName, username, password).getMongoClient();
             LOG.info("[corelib.db ApiMongoConnector] Creating Morphia datastore for database {}", dbName);
             datastore = connection.createDatastore(mongoClient, dbName);
         } catch (MongoException e) {
