@@ -44,10 +44,10 @@ public class EmbeddedMongoProvider implements MongoProvider {
     }
 
     /**
-     * @see MongoProvider#getMongoClient()
+     * @see MongoProvider#getMongo()
      */
     @Override
-    public MongoClient getMongoClient() {
+    public MongoClient getMongo() {
         return mongo;
     }
 

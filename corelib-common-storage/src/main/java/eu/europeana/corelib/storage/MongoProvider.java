@@ -10,7 +10,7 @@ public interface MongoProvider {
     /**
      * @return the provided mongoClient
      */
-    public MongoClient getMongoClient();
+    public MongoClient getMongo();
 
     /**
      * @return the default database defined for this MongoClient (null if not set)

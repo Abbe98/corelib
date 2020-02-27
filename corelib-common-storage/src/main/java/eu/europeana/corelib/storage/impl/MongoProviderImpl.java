@@ -22,14 +22,14 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
     // Exception is the value for threadsAllowedToBlockForConnectionMultiplier - searching for that yields in
     // anything between 5 and 10000. So I'm using the value most often seen.
     // For all these goes: let's test and see what happens.
-    private static final int MAX_CONNECTION_IDLE_MILLIS = 30000;
-    private static final int MAX_CONNECTION_LIFE_MILLIS = 60000;
-    private static final int CONNECTIONS_PER_HOST = 40;
+    private static final int MAX_CONNECTION_IDLE_MILLIS   = 30000;
+    private static final int MAX_CONNECTION_LIFE_MILLIS   = 60000;
+    private static final int CONNECTIONS_PER_HOST         = 40;
     private static final int THREADS_MAY_BLOCK_MULTIPLIER = 100;
-    private static final int SOCKET_TIMEOUT_MILLIS = 60000;
-    private static final int CONNECT_TIMEOUT_MILLIS = 30000;
+    private static final int SOCKET_TIMEOUT_MILLIS        = 60000;
+    private static final int CONNECT_TIMEOUT_MILLIS       = 30000;
 
-    private MongoClient mongoClient;
+    private MongoClient mongo;
     private String      definedDatabase;
 
     // I do not see the 2 connections directly after start-up that Patrick reported, so let's start at 0
@@ -61,11 +61,11 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
         MongoClientURI uri = new MongoClientURI(connectionUrl, clientOptionsBuilder);
 
         definedDatabase = uri.getDatabase();
-        LOG.info("[MongoProvider] [constructor] creating new MongoClient for {}; {}",
+        LOG.info("[MongoProvider] [constructor] creating new MongoClient for {}, {}",
                  uri.getHosts(),
-                 (StringUtils.isEmpty(definedDatabase) ? "default database" : "database: " + definedDatabase + " "));
-        mongoClient = new MongoClient(uri);
-        LOG.info("[MongoProvider] [constructor] connections count: {}", this.nrConnections);
+                 (StringUtils.isEmpty(definedDatabase) ? "default database" : "database: " + definedDatabase));
+        mongo = new MongoClient(uri);
+        LOG.info("[MongoProvider] [constructor] connection count: {}", this.nrConnections);
     }
 
     /**
@@ -143,7 +143,7 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
                      Arrays.toString(hosts),
                      " (no credentials)");
             definedDatabase = null;
-            mongoClient     = new MongoClient(serverAddresses, builder.build());
+            mongo           = new MongoClient(serverAddresses, builder.build());
         } else {
             List<MongoCredential> credentials = new ArrayList<>();
             credentials.add(MongoCredential.createCredential(username, dbName, password.toCharArray()));
@@ -153,8 +153,18 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
                      dbName,
                      " (with credentials)");
             definedDatabase = dbName;
-            mongoClient     = new MongoClient(serverAddresses, credentials, builder.build());
+            mongo           = new MongoClient(serverAddresses, credentials, builder.build());
         }
+    }
+
+    private int getPort(String[] ports, int index) {
+        if (ports == null || index < 0) {
+            throw new NumberFormatException("Empty port");
+        }
+        if (ports.length > 1 && index < ports.length) {
+            return Integer.parseInt(ports[index]);
+        }
+        return Integer.parseInt(ports[0]);
     }
 
     /**
@@ -186,23 +196,13 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
              optionsBuilder);
     }
 
-    private int getPort(String[] ports, int index) {
-        if (ports == null || index < 0) {
-            throw new NumberFormatException("Empty port");
-        }
-        if (ports.length > 1 && index < ports.length) {
-            return Integer.parseInt(ports[index]);
-        }
-        return Integer.parseInt(ports[0]);
-    }
-
     /**
-     * @see MongoProvider#getMongoClient()
+     * @see MongoProvider#getMongo()
      */
     @Override
-    public MongoClient getMongoClient() {
-        LOG.info("[MongoProvider] [getMongo()] connections count: {}", this.nrConnections);
-        return mongoClient;
+    public MongoClient getMongo() {
+        LOG.info("[MongoProvider] [getMongo()] connection count: {}", this.nrConnections);
+        return mongo;
     }
 
     /**
@@ -217,54 +217,59 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
      */
     @Override
     public void close() {
-        LOG.info("[MongoProvider] [close()] connections count: {}", this.nrConnections);
-        if (mongoClient != null) {
-            LOG.info("[MongoProvider] [close()] ... closing MongoClient ... {}", mongoClient.getServerAddressList().get(0));
-            mongoClient.close();
+        if (mongo != null) {
+            LOG.info("[MongoProvider] ... closing MongoClient ... {}", mongo.getServerAddressList().get(0));
+            mongo.close();
         }
     }
 
     @Override
     public void connectionPoolOpened(ConnectionPoolOpenedEvent connectionPoolOpenedEvent) {
-        LOG.info("[MongoProvider] [connectionPoolOpened()]: {}", connectionPoolOpenedEvent);
+        LOG.info("[MongoProvider] Connection pool opened - connection count: {}", nrConnections);
     }
 
     @Override
     public void connectionPoolClosed(ConnectionPoolClosedEvent connectionPoolClosedEvent) {
-        LOG.info("[MongoProvider] [connectionPoolClosed()]: {}", connectionPoolClosedEvent);
+        LOG.info("[MongoProvider] Connection pool closed - connection count: {}", nrConnections);
     }
 
     @Override
     public void connectionCheckedOut(ConnectionCheckedOutEvent connectionCheckedOutEvent) {
-        LOG.info("[MongoProvider] [connectionCheckedOut()]: {}", connectionCheckedOutEvent);
+        // ignore
     }
 
     @Override
     public void connectionCheckedIn(ConnectionCheckedInEvent connectionCheckedInEvent) {
-        LOG.info("[MongoProvider] [connectionCheckedIn()]: {}", connectionCheckedInEvent);
+        // ignore
     }
 
     @Override
     public void waitQueueEntered(ConnectionPoolWaitQueueEnteredEvent connectionPoolWaitQueueEnteredEvent) {
-        LOG.info("[MongoProvider] [waitQueueEntered()]: {}", connectionPoolWaitQueueEnteredEvent);
+        // ignore
     }
 
     @Override
     public void waitQueueExited(ConnectionPoolWaitQueueExitedEvent connectionPoolWaitQueueExitedEvent) {
-        LOG.info("[MongoProvider] [waitQueueExited()]: {}", connectionPoolWaitQueueExitedEvent);
+        // ignore
     }
 
     @Override
     public synchronized void connectionAdded(ConnectionAddedEvent connectionAddedEvent) {
         nrConnections++;
-        LOG.info("[MongoProvider] [connectionAdded()] {} for MongoProvider {}; connections count: {}", connectionAddedEvent,
-                 this.hashCode(), nrConnections);
+        LOG.info("[MongoProvider] Connection added - count: {}", nrConnections);
     }
 
     @Override
     public synchronized void connectionRemoved(ConnectionRemovedEvent connectionRemovedEvent) {
         nrConnections--;
-        LOG.info("[MongoProvider] [connectionRemoved()] {} for MongoProvider {}; connections count: {}", connectionRemovedEvent,
-                 this.hashCode(), nrConnections);
+        LOG.info("[MongoProvider] Connection removed - count: {}", nrConnections);
     }
+
+//    private void logNrOfMongoConnections(MongoClient mongo){
+//        if (StringUtils.isNotBlank(definedDatabase)){
+//            Document status = mongo.getDatabase(definedDatabase).runCommand(new Document("serverStatus", 1));
+//            LOG.info("[MongoProvider] [logNrOfMongoConnections()] {}", status.toJson());
+//        }
+//    }
+
 }

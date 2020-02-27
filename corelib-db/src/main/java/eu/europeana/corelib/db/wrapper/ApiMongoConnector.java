@@ -32,8 +32,7 @@ public class ApiMongoConnector {
     public Datastore createDatastore(String connectionUrl) {
         MongoProvider mongo = new MongoProviderImpl(connectionUrl);
         this.label       = mongo.getDefaultDatabase();
-        this.mongoClient = mongo.getMongoClient();
-        LOG.info("[corelib.db ApiMongoConnector] Creating Morphia datastore for databases {}", label);
+        this.mongoClient = mongo.getMongo();
         return new Morphia().createDatastore(mongoClient, label);
     }
 
@@ -59,8 +58,7 @@ public class ApiMongoConnector {
         Morphia   connection = new Morphia();
         try {
             this.label       = label;
-            this.mongoClient = new MongoProviderImpl(host, String.valueOf(port), dbName, username, password).getMongoClient();
-            LOG.info("[corelib.db ApiMongoConnector] Creating Morphia datastore for database {}", dbName);
+            this.mongoClient = new MongoProviderImpl(host, String.valueOf(port), dbName, username, password).getMongo();
             datastore = connection.createDatastore(mongoClient, dbName);
         } catch (MongoException e) {
             LOG.error(e.getMessage(), e);
@@ -84,7 +82,6 @@ public class ApiMongoConnector {
         try {
             this.label       = label;
             this.mongoClient = mongoClient;
-            LOG.info("[corelib.db ApiMongoConnector] Creating Morphia {} datastore for database {}", label, dbName);
             datastore = connection.createDatastore(mongoClient, dbName);
         } catch (MongoException e) {
             LOG.error(e.getMessage(), e);
@@ -97,7 +94,6 @@ public class ApiMongoConnector {
      */
     public void close() {
         if (mongoClient != null) {
-            LOG.info("[corelib.db ApiMongoConnector] Closing MongoClient for {}", label);
             mongoClient.close();
         }
     }

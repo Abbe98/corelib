@@ -102,7 +102,7 @@ public class EuropeanaIdRegistryMongoServerImpl implements MongoServer, European
                                                        String.valueOf(port),
                                                        databaseName,
                                                        username,
-                                                       password).getMongoClient();
+                                                       password).getMongo();
         this.databaseName      = databaseName;
         europeanaIdMongoServer = new EuropeanaIdMongoServerImpl(mongoClient, databaseName);
         createDatastore(createIndexes);
@@ -129,7 +129,6 @@ public class EuropeanaIdRegistryMongoServerImpl implements MongoServer, European
         if (createIndexes) {
             datastore.ensureIndexes();
         }
-        LOG.info("[corelib.lookup EuropeanaIdRegistryMongoServer] datastore is created");
     }
 
     /**
@@ -137,13 +136,11 @@ public class EuropeanaIdRegistryMongoServerImpl implements MongoServer, European
      */
     @Override
     public Datastore getDatastore() {
-		LOG.info("[corelib.lookup EuropeanaIdRegistryMongoServer] get datastore");
         return this.datastore;
     }
 
     public void setDatastore(Datastore datastore) {
         this.datastore = datastore;
-		LOG.info("[corelib.lookup EuropeanaIdRegistryMongoServer] datastore is set");
     }
 
     /**
@@ -151,7 +148,6 @@ public class EuropeanaIdRegistryMongoServerImpl implements MongoServer, European
      */
     @Override
     public void close() {
-        LOG.info("[corelib.lookup EuropeanaIdRegistryMongoServer] Closing MongoClient");
         mongoClient.close();
     }
 

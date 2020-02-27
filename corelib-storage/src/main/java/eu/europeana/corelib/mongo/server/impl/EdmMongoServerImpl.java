@@ -108,7 +108,7 @@ public class EdmMongoServerImpl implements EdmMongoServer {
         options.connectionsPerHost(10);
         options.connectTimeout(5000);
         options.socketTimeout(6000);
-        this.mongoClient  = new MongoProviderImpl(hosts, ports, databaseName, username, password, options).getMongoClient();
+        this.mongoClient  = new MongoProviderImpl(hosts, ports, databaseName, username, password, options).getMongo();
         this.databaseName = databaseName;
         createDatastore(createIndexes);
     }
@@ -141,7 +141,6 @@ public class EdmMongoServerImpl implements EdmMongoServer {
         if (createIndexes) {
             datastore.ensureIndexes();
         }
-//        LOG.info("[corelib.storage EdmMongoServer] Morphia datastore is created");
     }
 
     @Override
@@ -218,7 +217,6 @@ public class EdmMongoServerImpl implements EdmMongoServer {
     @Override
     public void close() {
         if (mongoClient != null) {
-            LOG.info("[corelib.storage EdmMongoServer] closing MongoClient");
             mongoClient.close();
         }
     }

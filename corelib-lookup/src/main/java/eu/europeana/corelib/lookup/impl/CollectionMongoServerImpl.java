@@ -62,7 +62,7 @@ public class CollectionMongoServerImpl implements MongoServer, CollectionMongoSe
 	 */
 	@Deprecated
 	public CollectionMongoServerImpl(String host, int port, String databaseName, String username, String password) {
-		this.mongoClient = new MongoProviderImpl(host, String.valueOf(port), databaseName, username, password).getMongoClient();
+		this.mongoClient = new MongoProviderImpl(host, String.valueOf(port), databaseName, username, password).getMongo();
 		this.databaseName = databaseName;
 		createDatastore();
 	}

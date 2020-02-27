@@ -40,7 +40,6 @@ public class EuropeanaIdMongoServerImpl implements MongoServer, EuropeanaIdMongo
 	public EuropeanaIdMongoServerImpl(MongoClient mongoClient, String databaseName) {
 		this.mongoClient = mongoClient;
 		this.databaseName = databaseName;
-		LOG.info("[EuropeanaIdMongoServer] [constructor]");
 	}
 
 	/**
@@ -64,7 +63,6 @@ public class EuropeanaIdMongoServerImpl implements MongoServer, EuropeanaIdMongo
 		if (createIndexes) {
 			datastore.ensureIndexes();
 		}
-		LOG.info("[EuropeanaIdMongoServer] [createDatastore()] datastore is created");
 	}
 
 	/**
@@ -72,7 +70,6 @@ public class EuropeanaIdMongoServerImpl implements MongoServer, EuropeanaIdMongo
 	 */
 	@Override
 	public Datastore getDatastore() {
-		LOG.info("[EuropeanaIdMongoServer] [getDatastore()]");
 		return this.datastore;
 	}
 
@@ -82,7 +79,6 @@ public class EuropeanaIdMongoServerImpl implements MongoServer, EuropeanaIdMongo
 	@Override
 	public void setDatastore(Datastore datastore) {
 		this.datastore = datastore;
-		LOG.info("[EuropeanaIdMongoServer] [setDatastore()]");
 
 	}
 
@@ -91,7 +87,6 @@ public class EuropeanaIdMongoServerImpl implements MongoServer, EuropeanaIdMongo
 	 */
 	@Override
 	public void close() {
-		LOG.info("[EuropeanaIdMongoServer] [close()] closing MongoClient");
 		mongoClient.close();
 	}
 
