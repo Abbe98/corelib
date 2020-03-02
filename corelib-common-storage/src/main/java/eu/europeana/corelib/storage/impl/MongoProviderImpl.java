@@ -44,6 +44,7 @@ public class MongoProviderImpl implements MongoProvider, ConnectionPoolListener 
      * @param connectionUrl the connection URL (!)
      * @see <a href="http://api.mongodb.com/java/current/com/mongodb/MongoClientURI.html">
      * MongoClientURI documentation</a>
+     * @param connectionUrl MongoDB connection string
      */
     public MongoProviderImpl(String connectionUrl) {
         // Let's add a connectionPoolListener so we can keep track of the number of connections
