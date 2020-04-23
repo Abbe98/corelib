@@ -432,7 +432,6 @@ public class SearchServiceImpl implements SearchService {
         if (defaultSort) {
             solrQuery.setSort("score", ORDER.desc);
             solrQuery.addSort("contentTier", ORDER.desc);
-            solrQuery.addSort("random_"+ RandomSeed.randomString(12), ORDER.desc);
         } else {
             // User set sort
             solrQuery.clearSorts();
