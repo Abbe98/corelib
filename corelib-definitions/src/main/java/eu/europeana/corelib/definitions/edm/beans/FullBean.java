@@ -305,7 +305,7 @@ public interface FullBean extends IdBean {
 
 	/**
 	 *
-	 * @return the list of concepts for this record
+	 * @return the SchemaOrg response for this record
 	 */
 	String getSchemaOrg();
 
